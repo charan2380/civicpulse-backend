@@ -1,0 +1,35 @@
+# render.yaml
+# This file tells Render exactly how to build and run our services.
+
+services:
+  # A Docker-based web service for our Spring Boot backend
+  - type: web
+    name: civicpulse-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    # Link this service to the database defined below
+    databases:
+      - name: civicpulse-db-prod # <-- CORRECTED
+        property: DATABASE_URL 
+    # Define the environment variables
+    envVars:
+      # Get the username from the linked database's details
+      - key: DB_USERNAME
+        fromDatabase:
+          name: civicpulse-db-prod # <-- CORRECTED
+          property: user
+      # Get the password from the linked database's details
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: civicpulse-db-prod # <-- CORRECTED
+          property: password
+      # Tell Spring Boot which port to listen on (Render provides this)
+      - key: PORT
+        value: 8080
+
+# Define the database our service depends on
+databases:
+  # This section tells Render to create a database with this name
+  - name: civicpulse-db-prod # <-- CORRECTED
+    plan: free
