@@ -1,32 +1,46 @@
+// OfficerComplaintController.java
 package com.example.civicpulse;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/complaints")
-@CrossOrigin(origins = "http://localhost:5173") // Also allow our React app to call this controller
 public class OfficerComplaintController {
 
-    // 1. Inject the corresponding repository
     @Autowired
     private OfficerComplaintRepository officerComplaintRepository;
 
-    // 2. Create an endpoint to POST a new complaint
     @PostMapping
     public OfficerComplaint createComplaint(@RequestBody OfficerComplaint newComplaint) {
-        // Spring Boot deserializes the incoming JSON into an OfficerComplaint object
-        // and we save it directly.
+        newComplaint.setAnonymous(true);
         return officerComplaintRepository.save(newComplaint);
     }
 
-    // 3. Create a SECURE endpoint to GET all complaints (for admins)
-    // Note: For now this is open, but we will secure it later with Spring Security.
     @GetMapping
     public List<OfficerComplaint> getAllComplaints() {
-        // This endpoint will be called by the admin dashboard.
         return officerComplaintRepository.findAll();
+    }
+    
+    // This endpoint correctly provides locations for UNRESOLVED complaints.
+    @GetMapping("/locations")
+    public List<ComplaintLocationDTO> getComplaintLocations() {
+        return officerComplaintRepository.findAll().stream()
+                .filter(c -> "Submitted".equals(c.getStatus()) && c.getLatitude() != null)
+                .map(c -> new ComplaintLocationDTO(c.getLatitude(), c.getLongitude()))
+                .collect(Collectors.toList());
+    }
+    
+    @PutMapping("/{id}/status")
+    public ResponseEntity<OfficerComplaint> updateComplaintStatus(@PathVariable Long id, @RequestBody StatusUpdateRequest statusUpdate) {
+        OfficerComplaint complaint = officerComplaintRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Complaint not found with id: " + id));
+
+        complaint.setStatus(statusUpdate.getStatus());
+        final OfficerComplaint updatedComplaint = officerComplaintRepository.save(complaint);
+        return ResponseEntity.ok(updatedComplaint);
     }
 }
